@@ -31,6 +31,8 @@ struct ModemInfo: Sendable {
     var hasService: Bool
     /// Home country of the SIM, falling back to the country of the current network.
     var simCountry: Country?
+    var deviceName: String
+    var firmware: String
 }
 
 struct SMSCounts: Sendable, Equatable {
@@ -45,7 +47,11 @@ struct SMSCounts: Sendable, Equatable {
     var stored: Int { inbox + outbox + drafts }
 }
 
+/// The API's types, generated at build time from `openapi.yaml` by Swift OpenAPI Generator.
+private typealias API = Components.Schemas
+
 /// Client for the HiLink web API that Huawei LTE sticks serve on their own network interface.
+/// The API is described in `openapi.yaml`; requests and responses use the types generated from it.
 ///
 /// Every request first fetches a fresh session cookie and verification token from
 /// `/api/webserver/SesTokInfo`; this firmware needs no login.
@@ -114,8 +120,9 @@ struct ModemClient: Sendable {
         var request = URLRequest(url: baseURL.appending(path: "api/device/basic_information"))
         request.timeoutInterval = 2
         guard let (data, _) = try? await Self.session.data(for: request),
-              let root = XMLNode.parse(data) else { return false }
-        return root.name == "response" && root["classify"]?.text.lowercased() == "hilink"
+              let root = XMLNode.parse(data), root.name == "response",
+              let basics = try? XMLCoding.decode(API.BasicInformation.self, from: root) else { return false }
+        return basics.classify?.lowercased() == "hilink"
     }
 
     // MARK: Status
@@ -123,21 +130,23 @@ struct ModemClient: Sendable {
     func info() async throws -> ModemInfo {
         // One at a time: each request takes a fresh session token, and the stick
         // rejects tokens issued to overlapping requests.
-        let status = try await get("api/monitoring/status")
-        let plmn = try await get("api/net/current-plmn")
-        let device = try await get("api/device/information")
+        let status: API.MonitoringStatus = try await get("api/monitoring/status")
+        let plmn: API.CurrentPlmn = try await get("api/net/current-plmn")
+        let device: API.DeviceInformation = try await get("api/device/information")
 
-        let msisdn = device["Msisdn"]?.text ?? ""
+        func nonEmpty(_ text: String?) -> String? { text?.isEmpty == false ? text : nil }
         return ModemInfo(
-            carrier: plmn["FullName"]?.text ?? plmn["ShortName"]?.text ?? "",
-            network: Self.networkName(typeEx: status["CurrentNetworkTypeEx"]?.int, type: status["CurrentNetworkType"]?.int),
-            signalBars: min(max(status["SignalIcon"]?.int ?? 0, 0), 5),
-            phoneNumber: msisdn.isEmpty ? nil : msisdn,
-            simID: device["Iccid"]?.text.isEmpty == false ? device["Iccid"]?.text : nil,
-            simReady: status["SimStatus"]?.int == 1,
-            hasService: status["ServiceStatus"]?.int == 2 && status["CurrentNetworkTypeEx"]?.int != 0,
-            simCountry: Country.forMobileCountryCode(device["Imsi"]?.text ?? "")
-                ?? Country.forMobileCountryCode(plmn["Numeric"]?.text ?? "")
+            carrier: nonEmpty(plmn.fullName) ?? plmn.shortName ?? "",
+            network: Self.networkName(typeEx: status.currentNetworkTypeEx, type: status.currentNetworkType),
+            signalBars: min(max(status.signalIcon ?? 0, 0), 5),
+            phoneNumber: nonEmpty(device.msisdn),
+            simID: nonEmpty(device.iccid),
+            simReady: status.simStatus == 1,
+            hasService: status.serviceStatus == 2 && status.currentNetworkTypeEx != 0,
+            simCountry: Country.forMobileCountryCode(device.imsi ?? "")
+                ?? Country.forMobileCountryCode(plmn.numeric ?? ""),
+            deviceName: device.deviceName ?? "",
+            firmware: device.softwareVersion ?? ""
         )
     }
 
@@ -161,13 +170,13 @@ struct ModemClient: Sendable {
     }
 
     func counts() async throws -> SMSCounts {
-        let node = try await get("api/sms/sms-count")
+        let counts: API.SmsCount = try await get("api/sms/sms-count")
         return SMSCounts(
-            unread: node["LocalUnread"]?.int ?? 0,
-            inbox: node["LocalInbox"]?.int ?? 0,
-            outbox: node["LocalOutbox"]?.int ?? 0,
-            drafts: node["LocalDraft"]?.int ?? 0,
-            capacity: node["LocalMax"]?.int ?? 0
+            unread: counts.localUnread ?? 0,
+            inbox: counts.localInbox ?? 0,
+            outbox: counts.localOutbox ?? 0,
+            drafts: counts.localDraft ?? 0,
+            capacity: counts.localMax ?? 0
         )
     }
 
@@ -184,21 +193,21 @@ struct ModemClient: Sendable {
         let pageSize = 20
         var result: [ModemSMS] = []
         for page in 1...50 {
-            let body = "<PageIndex>\(page)</PageIndex><ReadCount>\(pageSize)</ReadCount><BoxType>\(box)</BoxType>"
-                + "<SortType>0</SortType><Ascending>0</Ascending><UnreadPreferred>0</UnreadPreferred>"
-            let node = try await post("api/sms/sms-list", body: body)
-            let items = node["Messages"]?.children ?? []
+            let request = API.SmsListRequest(pageIndex: page, readCount: pageSize, boxType: box,
+                                             sortType: 0, ascending: 0, unreadPreferred: 0)
+            let response: API.SmsListResponse = try await post("api/sms/sms-list", request)
+            let items = response.messages?.message ?? []
             for item in items {
-                guard let date = Self.dateFormatter.date(from: item["Date"]?.text ?? "") else { continue }
-                let stat = item["Smstat"]?.int ?? 1
+                guard let date = Self.dateFormatter.date(from: item.date ?? "") else { continue }
+                let state = item.smstat ?? 1
                 result.append(ModemSMS(
-                    index: item["Index"]?.int,
-                    phone: item["Phone"]?.text ?? "",
-                    content: item["Content"]?.text ?? "",
+                    index: item.index,
+                    phone: item.phone ?? "",
+                    content: item.content ?? "",
                     date: date,
                     isOutgoing: box == 2,
-                    isUnread: box == 1 && stat == 0,
-                    hasFailed: box == 2 && stat == 4
+                    isUnread: box == 1 && state == 0,
+                    hasFailed: box == 2 && state == 4
                 ))
             }
             if items.count < pageSize { break }
@@ -208,37 +217,38 @@ struct ModemClient: Sendable {
 
     /// Sends a text message and waits until the stick reports it sent or failed.
     func send(_ text: String, to phone: String) async throws {
-        let body = "<Index>-1</Index><Phones><Phone>\(Self.escape(phone))</Phone></Phones><Sca></Sca>"
-            + "<Content>\(Self.escape(text))</Content><Length>\(text.count)</Length><Reserved>1</Reserved>"
-            + "<Date>\(Self.dateFormatter.string(from: .now))</Date>"
-        let response = try await post("api/sms/send-sms", body: body)
-        guard response.text.uppercased() == "OK" else { throw ModemError.sendFailed }
+        let request = API.SendSmsRequest(index: -1, phones: .init(phone: [phone]), sca: "", content: text,
+                                         length: text.count, reserved: 1,
+                                         date: Self.dateFormatter.string(from: .now))
+        let accepted: String = try await post("api/sms/send-sms", request)
+        guard accepted.uppercased() == "OK" else { throw ModemError.sendFailed }
 
         for _ in 0..<60 {
             try await Task.sleep(for: .milliseconds(500))
-            let status = try await get("api/sms/send-status")
-            if !(status["FailPhone"]?.text ?? "").isEmpty { throw ModemError.sendFailed }
-            if !(status["SucPhone"]?.text ?? "").isEmpty { return }
+            let status: API.SendStatus = try await get("api/sms/send-status")
+            if status.failPhone?.isEmpty == false { throw ModemError.sendFailed }
+            if status.sucPhone?.isEmpty == false { return }
         }
         // No verdict in time; the caller reloads the outbox, which shows the real outcome.
     }
 
     func markRead(index: Int) async throws {
-        _ = try await post("api/sms/set-read", body: "<Index>\(index)</Index>")
+        let _: String = try await post("api/sms/set-read", API.SmsIndexRequest(index: index))
     }
 
     func delete(index: Int) async throws {
-        _ = try await post("api/sms/delete-sms", body: "<Index>\(index)</Index>")
+        let _: String = try await post("api/sms/delete-sms", API.SmsIndexRequest(index: index))
     }
 
     // MARK: Transport
 
-    private func get(_ path: String) async throws -> XMLNode {
-        try await perform(path, body: nil)
+    private func get<Response: Decodable>(_ path: String) async throws -> Response {
+        try XMLCoding.decode(Response.self, from: try await perform(path, body: nil))
     }
 
-    private func post(_ path: String, body: String) async throws -> XMLNode {
-        try await perform(path, body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?><request>\(body)</request>")
+    private func post<Request: Encodable, Response: Decodable>(_ path: String, _ request: Request) async throws -> Response {
+        let body = try XMLCoding.encode(request, root: "request")
+        return try XMLCoding.decode(Response.self, from: try await perform(path, body: body))
     }
 
     /// The stick invalidates a session token as soon as another one is issued, so a token fetch and
@@ -266,7 +276,7 @@ struct ModemClient: Sendable {
             let data = try await Self.queue.run { try await Self.exchange(base: base, path: path, body: body) }
             guard let root = XMLNode.parse(data) else { throw ModemError.badResponse }
             guard root.name == "error" else { return root }
-            let code = root["code"]?.int ?? 0
+            let code = (try? XMLCoding.decode(API.ApiError.self, from: root))?.code ?? 0
             // 125001–125003 are session/token errors (e.g. the stick's own web page was open); try once more.
             if attempt == 0, (125001...125003).contains(code) { continue }
             throw ModemError.api(code: code)
@@ -277,10 +287,11 @@ struct ModemClient: Sendable {
     /// One token fetch followed by the request that uses it.
     private static func exchange(base: URL, path: String, body: String?) async throws -> Data {
         let (tokenData, _) = try await session.data(from: base.appending(path: "api/webserver/SesTokInfo"))
-        guard let tokens = XMLNode.parse(tokenData),
-              let sessionInfo = tokens["SesInfo"]?.text, let token = tokens["TokInfo"]?.text else {
+        guard let tokenRoot = XMLNode.parse(tokenData),
+              let tokens = try? XMLCoding.decode(API.SessionToken.self, from: tokenRoot) else {
             throw ModemError.badResponse
         }
+        let (sessionInfo, token) = (tokens.sesInfo, tokens.tokInfo)
 
         var request = URLRequest(url: base.appending(path: path))
         let cookie = sessionInfo.hasPrefix("SessionID=") ? sessionInfo : "SessionID=\(sessionInfo)"
@@ -293,14 +304,6 @@ struct ModemClient: Sendable {
         }
 
         return try await session.data(for: request).0
-    }
-
-    private static func escape(_ text: String) -> String {
-        text.replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
-            .replacingOccurrences(of: "'", with: "&apos;")
     }
 
     /// The stick reports and expects timestamps in local time, without a zone.
@@ -319,13 +322,6 @@ final class XMLNode {
     var children: [XMLNode] = []
 
     init(name: String) { self.name = name }
-
-    /// First child with the given name, ignoring case (the firmware is inconsistent about it).
-    subscript(name: String) -> XMLNode? {
-        children.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
-    }
-
-    var int: Int? { Int(text) }
 
     static func parse(_ data: Data) -> XMLNode? {
         let builder = Builder()

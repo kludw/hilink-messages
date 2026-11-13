@@ -1,0 +1,498 @@
+openapi: 3.1.0
+info:
+  title: Huawei HiLink stick API (subset)
+  version: 0.1.0
+  summary: The part of a Huawei HiLink LTE stick's local HTTP API that HiLink Messages uses.
+  description: |
+    Huawei does not publish this API. This document describes it as observed on an
+    E3372h-320 with firmware 10.0.3.1; other models and firmware versions may differ.
+
+    Conventions:
+
+    - Every body is XML. Responses are wrapped in a `<response>` element, requests in a
+      `<request>` element, and failures come back as HTTP 200 with an `<error>` element.
+    - Every call except `getBasicInformation` and `getSessionToken` needs a session cookie
+      and a verification token, both taken from `getSessionToken`. The stick invalidates a
+      token as soon as it issues another one, so fetch a token immediately before each call
+      and never run two calls at once.
+    - Element names are inconsistent in their capitalisation between endpoints; clients
+      should match them without regard to case.
+    - Timestamps are local time without a zone, formatted `yyyy-MM-dd HH:mm:ss`.
+servers:
+  - url: http://192.168.8.1
+    description: The stick is the gateway of the network adapter it creates. The subnet depends on the firmware (192.168.8.x, 192.168.3.x, …).
+tags:
+  - name: session
+  - name: status
+  - name: sms
+security:
+  - sessionCookie: []
+    verificationToken: []
+
+paths:
+  /api/webserver/SesTokInfo:
+    get:
+      operationId: getSessionToken
+      tags: [session]
+      summary: Get a session cookie and verification token for the next call.
+      security: []
+      responses:
+        "200":
+          description: A fresh session and token.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/SessionToken"
+
+  /api/device/basic_information:
+    get:
+      operationId: getBasicInformation
+      tags: [status]
+      summary: Identify the device. Needs no token; used to find the stick.
+      security: []
+      responses:
+        "200":
+          description: Basic device facts.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/BasicInformation"
+
+  /api/device/information:
+    get:
+      operationId: getDeviceInformation
+      tags: [status]
+      summary: Device and SIM identifiers.
+      responses:
+        "200":
+          description: Device details, or an error.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/DeviceInformation"
+
+  /api/monitoring/status:
+    get:
+      operationId: getMonitoringStatus
+      tags: [status]
+      summary: Signal, network type, SIM and service state.
+      responses:
+        "200":
+          description: Current status, or an error.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/MonitoringStatus"
+
+  /api/net/current-plmn:
+    get:
+      operationId: getCurrentPlmn
+      tags: [status]
+      summary: The mobile network the stick is registered on.
+      responses:
+        "200":
+          description: Current network, or an error.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/CurrentPlmn"
+
+  /api/sms/sms-count:
+    get:
+      operationId: getSmsCount
+      tags: [sms]
+      summary: How many messages are stored, and the capacity.
+      responses:
+        "200":
+          description: Message counts, or an error.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/SmsCount"
+
+  /api/sms/sms-list:
+    post:
+      operationId: listSms
+      tags: [sms]
+      summary: One page of the messages in a box.
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              $ref: "#/components/schemas/SmsListRequest"
+      responses:
+        "200":
+          description: A page of messages, or an error.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/SmsListResponse"
+
+  /api/sms/send-sms:
+    post:
+      operationId: sendSms
+      tags: [sms]
+      summary: Queue a text message for sending. Poll `getSendStatus` for the outcome.
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              $ref: "#/components/schemas/SendSmsRequest"
+      responses:
+        "200":
+          description: "`<response>OK</response>` if accepted, or an error."
+          content:
+            application/xml:
+              schema:
+                type: string
+                xml:
+                  name: response
+
+  /api/sms/send-status:
+    get:
+      operationId: getSendStatus
+      tags: [sms]
+      summary: Progress of the message being sent.
+      responses:
+        "200":
+          description: Which recipients have succeeded or failed so far, or an error.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/SendStatus"
+
+  /api/sms/set-read:
+    post:
+      operationId: markSmsRead
+      tags: [sms]
+      summary: Mark a received message as read.
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              $ref: "#/components/schemas/SmsIndexRequest"
+      responses:
+        "200":
+          description: "`<response>OK</response>`, or an error."
+          content:
+            application/xml:
+              schema:
+                type: string
+                xml:
+                  name: response
+
+  /api/sms/delete-sms:
+    post:
+      operationId: deleteSms
+      tags: [sms]
+      summary: Permanently delete a stored message.
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              $ref: "#/components/schemas/SmsIndexRequest"
+      responses:
+        "200":
+          description: "`<response>OK</response>`, or an error."
+          content:
+            application/xml:
+              schema:
+                type: string
+                xml:
+                  name: response
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: SessionID
+      description: The `SesInfo` value from `getSessionToken`.
+    verificationToken:
+      type: apiKey
+      in: header
+      name: __RequestVerificationToken
+      description: The `TokInfo` value from `getSessionToken`.
+
+  schemas:
+    SessionToken:
+      type: object
+      xml:
+        name: response
+      required: [SesInfo, TokInfo]
+      properties:
+        SesInfo:
+          type: string
+          description: Session id for the `SessionID` cookie. Some firmware already prefixes it with `SessionID=`.
+        TokInfo:
+          type: string
+          description: Value for the `__RequestVerificationToken` header.
+
+    BasicInformation:
+      type: object
+      xml:
+        name: response
+      properties:
+        productfamily:
+          type: string
+        classify:
+          type: string
+          description: "`hilink` for sticks in HiLink mode."
+        devicename:
+          type: string
+
+    DeviceInformation:
+      type: object
+      xml:
+        name: response
+      properties:
+        DeviceName:
+          type: string
+        SerialNumber:
+          type: string
+        Imei:
+          type: string
+        Imsi:
+          type: string
+          description: Subscriber identity. Its first three digits are the SIM's mobile country code.
+        Iccid:
+          type: string
+          description: The SIM card's serial number.
+        Msisdn:
+          type: string
+          description: The SIM's own phone number. Empty on most SIMs.
+        HardwareVersion:
+          type: string
+        SoftwareVersion:
+          type: string
+        WebUIVersion:
+          type: string
+        workmode:
+          type: string
+
+    MonitoringStatus:
+      type: object
+      xml:
+        name: response
+      properties:
+        ConnectionStatus:
+          type: integer
+        SignalIcon:
+          type: integer
+          description: Signal strength in bars, 0 to `maxsignal`.
+        maxsignal:
+          type: integer
+        CurrentNetworkType:
+          type: integer
+          description: "Radio technology: 0 none, 1–3 2G, 4–18 3G, 19 LTE."
+        CurrentNetworkTypeEx:
+          type: integer
+          description: "Finer radio technology: 0 none, 1–3 2G, 41–46 3G, 101 LTE, 1011 LTE+."
+        ServiceStatus:
+          type: integer
+          description: 2 when the stick is registered on a network.
+        SimStatus:
+          type: integer
+          description: 1 when the SIM is ready.
+        RoamingStatus:
+          type: integer
+
+    CurrentPlmn:
+      type: object
+      xml:
+        name: response
+      properties:
+        State:
+          type: integer
+        FullName:
+          type: string
+          description: Carrier name, e.g. "O2 - UK".
+        ShortName:
+          type: string
+        Numeric:
+          type: string
+          description: Mobile country code and network code, e.g. "23410".
+        Rat:
+          type: integer
+
+    SmsCount:
+      type: object
+      xml:
+        name: response
+      properties:
+        LocalUnread:
+          type: integer
+        LocalInbox:
+          type: integer
+        LocalOutbox:
+          type: integer
+        LocalDraft:
+          type: integer
+        LocalDeleted:
+          type: integer
+        SimUnread:
+          type: integer
+        SimInbox:
+          type: integer
+        SimOutbox:
+          type: integer
+        SimDraft:
+          type: integer
+        LocalMax:
+          type: integer
+          description: How many messages the stick itself can hold.
+        SimMax:
+          type: integer
+        SimUsed:
+          type: integer
+        NewMsg:
+          type: integer
+
+    SmsListRequest:
+      type: object
+      xml:
+        name: request
+      required: [PageIndex, ReadCount, BoxType, SortType, Ascending, UnreadPreferred]
+      properties:
+        PageIndex:
+          type: integer
+          description: Page number, starting at 1.
+        ReadCount:
+          type: integer
+          description: Messages per page (up to 50).
+        BoxType:
+          type: integer
+          description: 1 inbox, 2 sent, 3 drafts.
+        SortType:
+          type: integer
+          description: 0 sorts by date.
+        Ascending:
+          type: integer
+          description: 0 newest first, 1 oldest first.
+        UnreadPreferred:
+          type: integer
+          description: 1 lists unread messages first.
+
+    SmsListResponse:
+      type: object
+      xml:
+        name: response
+      properties:
+        Count:
+          type: integer
+          description: Number of messages in this page.
+        Messages:
+          $ref: "#/components/schemas/SmsMessageList"
+
+    SmsMessageList:
+      type: object
+      properties:
+        Message:
+          type: array
+          items:
+            $ref: "#/components/schemas/SmsMessage"
+
+    SmsMessage:
+      type: object
+      properties:
+        Smstat:
+          type: integer
+          description: "0 unread, 1 read, 2 draft, 3 sent, 4 failed to send."
+        Index:
+          type: integer
+          description: The stick's identifier for the message.
+        Phone:
+          type: string
+          description: The other party's number, or an alphanumeric sender name.
+        Content:
+          type: string
+        Date:
+          type: string
+          description: "Local time, `yyyy-MM-dd HH:mm:ss`."
+        Sca:
+          type: string
+        SaveType:
+          type: integer
+        Priority:
+          type: integer
+        SmsType:
+          type: integer
+
+    SendSmsRequest:
+      type: object
+      xml:
+        name: request
+      required: [Index, Phones, Sca, Content, Length, Reserved, Date]
+      properties:
+        Index:
+          type: integer
+          description: -1 for a new message.
+        Phones:
+          $ref: "#/components/schemas/PhoneList"
+        Sca:
+          type: string
+          description: Message centre number. Empty uses the SIM's default.
+        Content:
+          type: string
+        Length:
+          type: integer
+          description: Character count of `Content`.
+        Reserved:
+          type: integer
+          description: Always 1.
+        Date:
+          type: string
+          description: "Local time, `yyyy-MM-dd HH:mm:ss`."
+
+    PhoneList:
+      type: object
+      required: [Phone]
+      properties:
+        Phone:
+          type: array
+          items:
+            type: string
+
+    SendStatus:
+      type: object
+      xml:
+        name: response
+      properties:
+        Phone:
+          type: string
+          description: Recipient currently being sent to.
+        SucPhone:
+          type: string
+          description: Recipients the message was sent to successfully.
+        FailPhone:
+          type: string
+          description: Recipients the message could not be sent to.
+        TotalCount:
+          type: integer
+        CurIndex:
+          type: integer
+
+    SmsIndexRequest:
+      type: object
+      xml:
+        name: request
+      required: [Index]
+      properties:
+        Index:
+          type: integer
+          description: The message's `Index` from `listSms`.
+
+    ApiError:
+      type: object
+      xml:
+        name: error
+      properties:
+        code:
+          type: integer
+          description: "For example 125001–125003 for a bad or stale session token, 100002/100003 for an unsupported or forbidden call."
+        message:
+          type: string

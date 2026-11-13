@@ -66,6 +66,10 @@ struct ModemStatus {
     /// The app can only be used with the stick connected and a working SIM in it.
     var isUsable: Bool { isConnected && simReady && hasService }
 
+    /// Model name and firmware version, for the Settings window.
+    var deviceName = ""
+    var firmware = ""
+
     /// Messages stored on the stick, and how many it can hold (0 until known).
     var storedMessages = 0
     var storageCapacity = 0

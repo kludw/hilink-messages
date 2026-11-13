@@ -107,7 +107,8 @@ final class MessageStore {
         if usesSampleData {
             modemMessages = SampleData.messages
             modem = ModemStatus(isConnected: true, carrier: "Carrier", network: "LTE", signalBars: 4,
-                                phoneNumber: "+48 600 100 200", storageCapacity: 500)
+                                phoneNumber: "+48 600 100 200", deviceName: "Sample stick",
+                                firmware: "0.0", storageCapacity: 500)
             modem.storedMessages = CommandLine.arguments.contains("--storage-nearly-full") ? 450 : modemMessages.count
             rebuild()
             selection = sortedConversations.first?.id
@@ -118,7 +119,7 @@ final class MessageStore {
             await poll()
             // Between polls, watch for the stick's network interface vanishing: that is
             // how an unplugged stick shows up, within a second, without waiting on a timeout.
-            let pause = client == nil ? 2 : 5
+            let pause = client == nil ? 2 : Preferences.pollInterval
             for _ in 0..<(pause * 2) {
                 try? await Task.sleep(for: .milliseconds(500))
                 if let client, !client.isReachableLocally {
@@ -158,6 +159,7 @@ final class MessageStore {
                                 phoneNumber: info.phoneNumber ?? savedNumber(simID: info.simID),
                                 canEditNumber: info.phoneNumber == nil, simID: info.simID,
                                 simCountry: info.simCountry,
+                                deviceName: info.deviceName, firmware: info.firmware,
                                 storedMessages: stored, storageCapacity: capacity)
             if CommandLine.arguments.contains("--no-sim") { modem.simReady = false }
             failedPolls = 0
@@ -199,8 +201,8 @@ final class MessageStore {
         let fresh = received.filter { sms in sms.isUnread && sms.index.map { !knownInbox.contains($0) } == true }
         guard !fresh.isEmpty else { return }
 
-        notifier.playTone()
-        guard !NSApp.isActive else { return }
+        if Preferences.playsSound { notifier.playTone() }
+        guard Preferences.showsNotifications, !NSApp.isActive else { return }
         for sms in fresh.sorted(by: { $0.date < $1.date }) {
             let id = Conversation.id(for: sms.phone)
             notifier.notify(title: conversation(id)?.title ?? sms.phone, text: sms.content, conversationID: id)

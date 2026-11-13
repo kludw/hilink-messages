@@ -13,14 +13,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     private nonisolated static let codeCategory = "verification-code"
     private nonisolated static let copyCodeAction = "copy-code"
 
-    /// The iPhone text tones that macOS ships with, in order of preference.
-    private static let toneURL: URL? = {
-        let folder = "/System/Library/PrivateFrameworks/ToneLibrary.framework/Versions/A/Resources/AlertTones/"
-        return ["Modern/Note.m4r", "Classic/Tri-Tone.m4r", "ReceivedMessage.caf"]
-            .map { URL(fileURLWithPath: folder + $0) }
-            .first { FileManager.default.fileExists(atPath: $0.path) }
-    }()
-
     /// Asks for permission to show notifications. Safe to call on every launch.
     func requestPermission() async {
         let center = UNUserNotificationCenter.current()
@@ -33,13 +25,24 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         _ = try? await center.requestAuthorization(options: [.alert, .badge])
     }
 
+    /// Plays the tone chosen in Settings, or the first available one, or a beep.
     func playTone() {
-        if let url = Self.toneURL, let player = try? AVAudioPlayer(contentsOf: url) {
+        let tone = Preferences.tone.url != nil ? Preferences.tone : Tone.available.first
+        if let url = tone?.url, let player = try? AVAudioPlayer(contentsOf: url) {
             self.player = player
             player.play()
         } else {
             NSSound.beep()
         }
+    }
+
+    private static var previewPlayer: AVAudioPlayer?
+
+    /// Plays a tone once, for choosing one in Settings.
+    static func preview(_ tone: Tone) {
+        guard let url = tone.url, let player = try? AVAudioPlayer(contentsOf: url) else { return }
+        previewPlayer = player
+        player.play()
     }
 
     /// Shows a banner for a received message. The tone is played separately, so the banner is silent.

@@ -64,6 +64,20 @@ The stick can only hold a fixed number of messages (500 on the E3372h-320). Once
 
 Delete old conversations to free space.
 
+## Settings
+
+Open Settings with **⌘,** or from the menu bar icon.
+
+| Tab | Setting | What it does |
+|---|---|---|
+| General | Open at login | Starts the app when you log in to the Mac. |
+| General | Keep running in the menu bar when the window is closed | On by default. With it off, closing the window quits the app, and messages only arrive while it is open. |
+| General | Check for new messages | How often the stick is asked for new messages: every 2, 5, 10 or 30 seconds. |
+| Notifications | Play a sound when a message arrives | Turns the text tone on or off. |
+| Notifications | Sound | Which tone to play. Picking one plays it. |
+| Notifications | Show notifications | Turns the banners on or off. macOS must also allow them. |
+| Stick | (read-only) | Connection status, model, firmware, signal, messages stored and your number. |
+
 ## When the app is blocked
 
 The app replaces its whole window with a status screen when it cannot work:

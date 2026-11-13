@@ -1,0 +1,6 @@
+# Only the types are generated: the stick speaks XML, which the app reads and writes
+# with its own small coder (XMLCoding.swift) rather than a generated client.
+generate:
+  - types
+namingStrategy: idiomatic
+accessModifier: internal

@@ -14,7 +14,7 @@ HiLink Messages is a native macOS app for sending and receiving text messages (S
 
 - **Conversations.** Messages stored on the stick are grouped into threads by phone number, with a search field and an unread filter.
 - **Sending.** Type and press Return. A counter shows how many SMS parts the text will use. Failed messages can be retried.
-- **Receiving.** The app checks the stick every five seconds, plays a tone for new messages and shows a notification when it is in the background.
+- **Receiving.** The app checks the stick every few seconds, plays a tone for new messages and shows a notification when it is in the background.
 - **Contacts.** Names and photos come from the Mac's Contacts. New messages can be addressed by typing a contact's name.
 - **Verification codes.** Notifications for messages that contain a code get a Copy Code button.
 - **Menu bar.** Closing the window leaves the app running as a signal-strength icon in the menu bar.

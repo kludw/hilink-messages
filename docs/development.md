@@ -14,7 +14,11 @@ The app is a Swift package with a single executable target, written in SwiftUI w
 | `Package.swift` | Package definition. Targets macOS 26. |
 | `Sources/HiLinkMessages/App.swift` | App entry point, window, menu bar item, colours. |
 | `Sources/HiLinkMessages/MessageStore.swift` | App state: polling, conversations, sending, selection. |
-| `Sources/HiLinkMessages/ModemClient.swift` | The stick's HTTP API and a small XML reader. |
+| `Sources/HiLinkMessages/openapi.yaml` | OpenAPI 3.1 description of the stick's API. Also linked from the repository root. |
+| `Sources/HiLinkMessages/ModemClient.swift` | The calls to the stick, using the types generated from `openapi.yaml`. |
+| `Sources/HiLinkMessages/XMLCoding.swift` | Reads and writes the stick's XML with those generated types. |
+| `Sources/HiLinkMessages/SettingsView.swift`, `Preferences.swift` | The Settings window and the stored settings. |
+| `Tests/HiLinkMessagesTests/` | Tests for the XML coding and the app's text and number logic. |
 | `Sources/HiLinkMessages/SidebarView.swift` | Conversation list, search, footer, number editor. |
 | `Sources/HiLinkMessages/ChatView.swift` | Thread, bubbles, message field, New Message. |
 | `Sources/HiLinkMessages/ConnectionView.swift` | The blocking not-connected screens. |
@@ -37,6 +41,24 @@ The script runs `swift build -c release`, creates `build/HiLink Messages.app` wi
 
 A plain `swift run` also works for quick checks, but macOS features that need a real app bundle (notifications, permission prompts, plain HTTP to the stick) are only reliable in the bundled app.
 
+## The API description and generated types
+
+`Sources/HiLinkMessages/openapi.yaml` describes the part of the stick's API the app uses. [Swift OpenAPI Generator](https://github.com/apple/swift-openapi-generator) runs as a build plugin and turns its schemas into Swift types (`Components.Schemas.…`) on every build; the generated code is not checked in.
+
+Only the types are generated. The stick speaks XML and needs a fresh session token before every call, so the requests themselves are made by `ModemClient`, and `XMLCoding` converts between XML and the generated types.
+
+To support another call, add it and its schemas to `openapi.yaml`, build, and use the new type in `ModemClient`.
+
+The first build downloads the generator and its dependencies and takes a minute or two.
+
+## Tests
+
+```bash
+swift test
+```
+
+The tests decode real responses from an E3372h-320 (with identifiers replaced), check that requests are encoded exactly as the stick expects, and cover the SMS counter, verification-code detection and phone-number handling. They do not need a stick.
+
 ## Launch flags
 
 These are for development and testing. Pass them after `--args`, and quit the running app first, because flags are only read at launch.
@@ -56,7 +78,7 @@ open "build/HiLink Messages.app" --args --sample-data
 
 ## Testing against a real stick
 
-There is no automated test suite. When testing by hand, remember that sending is real: every test message is an SMS billed to the SIM. Prefer `--sample-data` for interface work.
+The automated tests never talk to a stick. When testing by hand, remember that sending is real: every test message is an SMS billed to the SIM. Prefer `--sample-data` for interface work.
 
 ## Documentation site
 

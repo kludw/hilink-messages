@@ -38,14 +38,16 @@ On this firmware no login is needed.
 
 Requests and responses are small XML documents.
 
+The full description of these calls, with every field the app reads, is in [`openapi.yaml`](https://github.com/kludw/hilink-messages/blob/master/Sources/HiLinkMessages/openapi.yaml), an OpenAPI 3.1 document. The app's Swift types for the API are generated from that file when it is built.
+
 ## Keeping up to date
 
-Every five seconds the app reads the status and the message counts. It reloads the message lists only when the counts change. Sending waits for the stick to report success or failure, then reloads the outbox.
+At a regular interval (five seconds by default; it can be changed in Settings) the app reads the status and the message counts. It reloads the message lists only when the counts change. Sending waits for the stick to report success or failure, then reloads the outbox.
 
 ## Where your data lives
 
 - **Messages** are stored on the stick, and only there. The app reads them each time and keeps no database or cache on the Mac. Deleting in the app deletes from the stick.
-- **Your own number**, if you enter it, is saved in the app's preferences on the Mac (`~/Library/Preferences/local.hilink-messages.plist`), keyed by the SIM's serial number.
+- **Settings and your own number**, if you enter it, are saved in the app's preferences on the Mac (`~/Library/Preferences/local.hilink-messages.plist`). The number is stored per SIM, under the SIM's serial number.
 - **Contacts** are read from the Mac's Contacts to show names and photos. They are not copied or sent anywhere.
 - **Nothing leaves your Mac** except the SMS messages you send, which go through the stick to your mobile network. The app makes no other network connections.
 

@@ -15,6 +15,8 @@ A native macOS app for sending and receiving text messages (SMS) through a Huawe
 - A menu bar icon showing signal strength; the app keeps running with its window closed
 - Clear screens for a missing stick, missing SIM or no signal
 - A storage indicator that warns before the stick fills up
+- Settings for login, check interval, sound and notifications
+- An [OpenAPI description](openapi.yaml) of the stick's API, from which the app's API types are generated
 
 ## Requirements
 

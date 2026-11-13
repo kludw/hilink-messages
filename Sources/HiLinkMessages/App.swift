@@ -35,6 +35,11 @@ struct HiLinkMessagesApp: App {
             }
         }
 
+        Settings {
+            SettingsView()
+                .environment(store)
+        }
+
         // Closing the window leaves the app running here, so messages keep arriving.
         MenuBarExtra {
             MenuBarContent()
@@ -106,6 +111,11 @@ struct MenuBarContent: View {
         }
         .disabled(!store.modem.isUsable)
         Divider()
+        SettingsLink {
+            Text("Settings…")
+        }
+        .keyboardShortcut(",")
+        Divider()
         Button("Quit HiLink Messages") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
     }
@@ -118,6 +128,10 @@ struct MenuBarContent: View {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        Preferences.registerDefaults()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Needed when launched as a bare binary (swift run) rather than from the .app bundle.
         NSApp.setActivationPolicy(.regular)
@@ -136,8 +150,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         center.addObserver(self, selector: #selector(windowDidBecomeMain), name: NSWindow.didBecomeMainNotification, object: nil)
     }
 
-    /// Keep running in the menu bar when the window is closed; quit from the menu or with ⌘Q.
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    /// By default the app keeps running in the menu bar when the window is closed (quit from the
+    /// menu or with ⌘Q); with that setting off, closing the window quits.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        !Preferences.keepsRunningInMenuBar
+    }
 
     /// Clicking the Dock icon or launching the app again reopens the window.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
