@@ -52,15 +52,17 @@ Its menu shows the carrier and network type, the unread count, and **Open Messag
 
 ## The sidebar footer
 
-- **Top row:** signal bars, carrier and network type, and the number of messages stored on the stick out of its capacity (for example `42/500`).
+- **Top row:** signal bars, carrier and network type. When the stick's message storage is more than 80% full, a warning with the count (for example `412/500`) appears here.
 - **Bottom row:** your own number, with buttons to copy and edit it.
 
 ### Storage warning
 
 The stick can only hold a fixed number of messages (500 on the E3372h-320). Once it is full, new messages cannot arrive.
 
-- Above **80%** an orange warning triangle appears next to the count.
+- Above **80%** an orange warning triangle and the count appear in the sidebar footer.
 - At **100%** the triangle turns red.
+
+The current count is always shown in Settings, on the Stick tab.
 
 Delete old conversations to free space.
 
@@ -81,8 +83,8 @@ Open Settings with **⌘,** or from the menu bar icon.
 | Mobile Data | This month (read-only) | Data downloaded, uploaded and the total for the current month, as counted by the stick. |
 | Stick | (read-only) | Connection status, signal, messages stored, your number, model, firmware, hardware, IMEI, serial number and how long the stick has been running. |
 | Stick | Update firmware automatically | Lets the stick install firmware updates by itself. Shown only if the stick offers the setting. |
-| Stick | Restart Stick… | Restarts the stick. It takes about a minute and the app reconnects by itself. |
-| Stick | Reset Stick… | Restores the stick's factory settings after a confirmation. Messages stored on it may be deleted. This cannot be undone. |
+| Stick | Restart Stick | Restarts the stick. It takes about a minute and the app reconnects by itself. |
+| Stick | Reset Stick | Restores the stick's factory settings after a confirmation. Messages stored on it may be deleted. This cannot be undone. |
 
 {: .note }
 The Mobile Data tab, the firmware update switch and the Restart and Reset buttons are new and have not yet been verified against a real stick. If one of them reports an error, the stick's firmware probably answers differently from what the app expects.

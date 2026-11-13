@@ -211,6 +211,11 @@ private struct StickSettings: View {
                     let device = store.deviceDetails
                     LabeledContent("Model", value: text(device?.name ?? modem.deviceName))
                     LabeledContent("Firmware", value: text(device?.firmware ?? modem.firmware))
+                    if let automatic = device?.updatesAutomatically {
+                        Toggle("Update firmware automatically", isOn: Binding(get: { automatic }, set: { enabled in
+                            Task { await store.setFirmwareAutoUpdate(enabled: enabled) }
+                        }))
+                    }
                     if let device {
                         LabeledContent("Hardware", value: text(device.hardware))
                         LabeledContent("Web interface", value: text(device.webUI))
@@ -224,13 +229,10 @@ private struct StickSettings: View {
                 .textSelection(.enabled)
 
                 Section {
-                    if let automatic = store.deviceDetails?.updatesAutomatically {
-                        Toggle("Update firmware automatically", isOn: Binding(get: { automatic }, set: { enabled in
-                            Task { await store.setFirmwareAutoUpdate(enabled: enabled) }
-                        }))
+                    HStack {
+                        Button("Restart Stick") { confirmsRestart = true }
+                        Button("Reset Stick", role: .destructive) { confirmsReset = true }
                     }
-                    Button("Restart Stick…") { confirmsRestart = true }
-                    Button("Reset Stick…", role: .destructive) { confirmsReset = true }
                 }
                 StickErrorRow()
             }
