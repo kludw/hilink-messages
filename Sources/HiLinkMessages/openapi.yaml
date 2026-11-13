@@ -280,20 +280,6 @@ paths:
                 xml:
                   name: response
 
-  /api/monitoring/traffic-statistics:
-    get:
-      operationId: getTrafficStatistics
-      x-verified: false
-      tags: [data]
-      summary: Data transferred in the current connection and in total.
-      responses:
-        "200":
-          description: Traffic counters, or an error.
-          content:
-            application/xml:
-              schema:
-                $ref: "#/components/schemas/TrafficStatistics"
-
   /api/monitoring/month_statistics:
     get:
       operationId: getMonthStatistics
@@ -307,42 +293,6 @@ paths:
             application/xml:
               schema:
                 $ref: "#/components/schemas/MonthStatistics"
-
-  /api/monitoring/start_date:
-    get:
-      operationId: getDataPlan
-      x-verified: false
-      tags: [data]
-      summary: The monthly data limit and the day of the month on which usage resets.
-      responses:
-        "200":
-          description: Data plan settings, or an error.
-          content:
-            application/xml:
-              schema:
-                $ref: "#/components/schemas/DataPlan"
-
-  /api/monitoring/clear-traffic:
-    post:
-      operationId: clearTrafficStatistics
-      x-verified: false
-      tags: [data]
-      summary: Reset the traffic counters to zero.
-      requestBody:
-        required: true
-        content:
-          application/xml:
-            schema:
-              $ref: "#/components/schemas/ClearTrafficRequest"
-      responses:
-        "200":
-          description: "`<response>OK</response>`, or an error."
-          content:
-            application/xml:
-              schema:
-                type: string
-                xml:
-                  name: response
 
   /api/device/control:
     post:
@@ -680,44 +630,6 @@ components:
         pdp_always_on:
           type: integer
 
-    TrafficStatistics:
-      type: object
-      xml:
-        name: response
-      properties:
-        CurrentConnectTime:
-          type: integer
-          format: int64
-          description: Seconds the current data connection has been up.
-        CurrentUpload:
-          type: integer
-          format: int64
-          description: Bytes sent in the current connection.
-        CurrentDownload:
-          type: integer
-          format: int64
-          description: Bytes received in the current connection.
-        CurrentUploadRate:
-          type: integer
-          format: int64
-          description: Bytes per second.
-        CurrentDownloadRate:
-          type: integer
-          format: int64
-          description: Bytes per second.
-        TotalUpload:
-          type: integer
-          format: int64
-          description: Bytes sent since the counters were last reset.
-        TotalDownload:
-          type: integer
-          format: int64
-          description: Bytes received since the counters were last reset.
-        TotalConnectTime:
-          type: integer
-          format: int64
-          description: Seconds connected since the counters were last reset.
-
     MonthStatistics:
       type: object
       xml:
@@ -738,32 +650,6 @@ components:
         MonthLastClearTime:
           type: string
           description: Date the month counters were last reset.
-
-    DataPlan:
-      type: object
-      xml:
-        name: response
-      properties:
-        StartDay:
-          type: integer
-          description: Day of the month on which usage resets.
-        DataLimit:
-          type: string
-          description: Monthly limit with its unit, e.g. "5GB". Empty or "0MB" when no limit is set.
-        MonthThreshold:
-          type: integer
-          description: Percentage of the limit at which the stick warns.
-        SetMonthData:
-          type: integer
-          description: 1 when a monthly limit is in use.
-
-    ClearTrafficRequest:
-      type: object
-      required: [ClearTraffic]
-      properties:
-        ClearTraffic:
-          type: integer
-          description: Always 1.
 
     DeviceControlRequest:
       type: object

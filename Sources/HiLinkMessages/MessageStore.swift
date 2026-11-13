@@ -107,7 +107,7 @@ final class MessageStore {
         if usesSampleData {
             modemMessages = SampleData.messages
             modem = ModemStatus(isConnected: true, carrier: "Carrier", network: "LTE", signalBars: 4,
-                                phoneNumber: "+48 600 100 200", deviceName: "Sample stick",
+                                phoneNumber: "+48 600 100 200", canEditNumber: true, deviceName: "Sample stick",
                                 firmware: "0.0", storageCapacity: 500)
             modem.storedMessages = CommandLine.arguments.contains("--storage-nearly-full") ? 450 : modemMessages.count
             rebuild()
@@ -288,19 +288,8 @@ final class MessageStore {
 
     func loadDataUsage() async {
         await stickSetting { self.dataUsage = try await $0.dataUsage() } sample: {
-            self.dataUsage = self.dataUsage ?? DataUsage(
-                sessionDownload: 48_300_000, sessionUpload: 6_100_000, sessionSeconds: 5_400,
-                monthDownload: 2_740_000_000, monthUpload: 310_000_000, monthSeconds: 262_000,
-                monthLastReset: "2026-11-01", totalDownload: 19_800_000_000, totalUpload: 2_100_000_000,
-                totalSeconds: 3_900_000, monthlyLimit: "30GB", resetDay: 1)
+            self.dataUsage = DataUsage(monthDownload: 2_740_000_000, monthUpload: 310_000_000)
         }
-    }
-
-    func resetDataUsage() async {
-        await stickSetting {
-            try await $0.resetDataUsage()
-            self.dataUsage = try await $0.dataUsage()
-        } sample: { self.dataUsage = DataUsage(monthlyLimit: self.dataUsage?.monthlyLimit, resetDay: self.dataUsage?.resetDay) }
     }
 
     func loadDeviceDetails() async {

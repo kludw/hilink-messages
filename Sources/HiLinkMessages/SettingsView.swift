@@ -11,8 +11,6 @@ struct SettingsView: View {
                 .tabItem { Label("Notifications", systemImage: "bell.badge") }
             MobileDataTab()
                 .tabItem { Label("Mobile Data", systemImage: "arrow.up.arrow.down") }
-            DataUsageTab()
-                .tabItem { Label("Data Usage", systemImage: "chart.bar") }
             StickSettings()
                 .tabItem { Label("Stick", systemImage: "antenna.radiowaves.left.and.right") }
         }
@@ -37,10 +35,6 @@ private struct GeneralSettings: View {
                         .foregroundStyle(.red)
                 }
                 Toggle("Keep running in the menu bar when the window is closed", isOn: $keepsRunning)
-            } footer: {
-                Text(keepsRunning
-                     ? "Messages keep arriving with the window closed. Quit with ⌘Q."
-                     : "Closing the window quits the app, and messages only arrive while it is open.")
             }
 
             Section {
@@ -49,8 +43,6 @@ private struct GeneralSettings: View {
                         Text("Every \(seconds) seconds").tag(seconds)
                     }
                 }
-            } footer: {
-                Text("Shorter intervals show new messages sooner and keep the stick busier.")
             }
         }
         .formStyle(.grouped)
@@ -94,8 +86,6 @@ private struct NotificationSettings: View {
 
             Section {
                 Toggle("Show notifications", isOn: $showsNotifications)
-            } footer: {
-                Text("Banners appear when HiLink Messages is not the active app. macOS must also allow them, under System Settings › Notifications.")
             }
         }
         .formStyle(.grouped)
@@ -140,88 +130,32 @@ private struct MobileDataTab: View {
                         Toggle("Mobile data", isOn: Binding(get: { settings.isEnabled }, set: { enabled in
                             run { await store.setMobileData(enabled: enabled) }
                         }))
-                    } footer: {
-                        Text("Lets this Mac use the SIM's internet connection through the stick. Text messages work with it on or off.")
-                    }
-
-                    if let roaming = settings.allowsRoaming {
-                        Section {
+                        if let roaming = settings.allowsRoaming {
                             Toggle("Data roaming", isOn: Binding(get: { roaming }, set: { allowed in
                                 run { await store.setRoaming(allowed: allowed) }
                             }))
                             .disabled(!settings.isEnabled)
-                        } footer: {
-                            Text("Allows mobile data on other networks, for example abroad. Your carrier may charge extra for it.")
                         }
                     }
                 } else if store.stickSettingsError == nil {
                     Section { ProgressView().controlSize(.small) }
+                }
+
+                if let usage = store.dataUsage {
+                    Section("This month") {
+                        LabeledContent("Downloaded", value: bytes(usage.monthDownload))
+                        LabeledContent("Uploaded", value: bytes(usage.monthUpload))
+                        LabeledContent("Total", value: bytes(usage.monthDownload + usage.monthUpload))
+                    }
                 }
                 StickErrorRow()
             }
         }
         .formStyle(.grouped)
         .disabled(isBusy)
-        .task(id: store.modem.isConnected) { await store.loadMobileData() }
-    }
-
-    private func run(_ action: @escaping () async -> Void) {
-        isBusy = true
-        Task {
-            await action()
-            isBusy = false
-        }
-    }
-}
-
-private struct DataUsageTab: View {
-    @Environment(MessageStore.self) private var store
-    @State private var confirmsReset = false
-
-    var body: some View {
-        Form {
-            if !store.modem.isConnected {
-                StickUnavailable()
-            } else {
-                if let usage = store.dataUsage {
-                    Section("Current connection") {
-                        LabeledContent("Downloaded", value: bytes(usage.sessionDownload))
-                        LabeledContent("Uploaded", value: bytes(usage.sessionUpload))
-                        LabeledContent("Connected for", value: duration(usage.sessionSeconds))
-                    }
-                    Section {
-                        LabeledContent("Used", value: bytes(usage.monthDownload + usage.monthUpload))
-                        LabeledContent("Monthly limit", value: usage.monthlyLimit ?? "Not set")
-                        if let day = usage.resetDay, day > 0 {
-                            LabeledContent("Resets on day", value: "\(day)")
-                        }
-                    } header: {
-                        Text("This month")
-                    } footer: {
-                        Text("Counted by the stick. Your carrier's own count may differ.")
-                    }
-                    Section("Since last reset") {
-                        LabeledContent("Downloaded", value: bytes(usage.totalDownload))
-                        LabeledContent("Uploaded", value: bytes(usage.totalUpload))
-                        LabeledContent("Connected for", value: duration(usage.totalSeconds))
-                        Button("Reset Statistics…") { confirmsReset = true }
-                    }
-                } else if store.stickSettingsError == nil {
-                    Section { ProgressView().controlSize(.small) }
-                }
-                StickErrorRow()
-            }
-        }
-        .formStyle(.grouped)
-        .confirmationDialog("Reset the stick's data usage statistics?", isPresented: $confirmsReset) {
-            Button("Reset", role: .destructive) {
-                Task { await store.resetDataUsage() }
-            }
-        } message: {
-            Text("The counters on the stick go back to zero. This cannot be undone.")
-        }
         .task(id: store.modem.isConnected) {
-            // Keep the figures fresh while the tab is open.
+            await store.loadMobileData()
+            // Keep the usage figures fresh while the tab is open.
             while !Task.isCancelled {
                 await store.loadDataUsage()
                 try? await Task.sleep(for: .seconds(5))
@@ -231,6 +165,14 @@ private struct DataUsageTab: View {
 
     private func bytes(_ count: Int64) -> String {
         count.formatted(.byteCount(style: .file))
+    }
+
+    private func run(_ action: @escaping () async -> Void) {
+        isBusy = true
+        Task {
+            await action()
+            isBusy = false
+        }
     }
 }
 

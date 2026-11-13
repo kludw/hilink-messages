@@ -42,22 +42,10 @@ struct MobileDataSettings: Sendable, Equatable {
     var allowsRoaming: Bool?
 }
 
-/// Data transferred through the stick, in bytes, and time connected, in seconds.
+/// Mobile data transferred through the stick this month, in bytes.
 struct DataUsage: Sendable, Equatable {
-    var sessionDownload: Int64 = 0
-    var sessionUpload: Int64 = 0
-    var sessionSeconds: Int64 = 0
     var monthDownload: Int64 = 0
     var monthUpload: Int64 = 0
-    var monthSeconds: Int64 = 0
-    var monthLastReset = ""
-    var totalDownload: Int64 = 0
-    var totalUpload: Int64 = 0
-    var totalSeconds: Int64 = 0
-    /// The monthly limit as the stick states it (e.g. "5GB"), or nil if none is set.
-    var monthlyLimit: String?
-    /// Day of the month on which the monthly figures reset.
-    var resetDay: Int?
 }
 
 /// Identity of the stick, for the Settings window.
@@ -301,33 +289,8 @@ struct ModemClient: Sendable {
     }
 
     func dataUsage() async throws -> DataUsage {
-        let traffic: API.TrafficStatistics = try await get("api/monitoring/traffic-statistics")
-        // The month counters and the data plan are extras; show what the stick has.
-        let month: API.MonthStatistics? = try? await get("api/monitoring/month_statistics")
-        let plan: API.DataPlan? = try? await get("api/monitoring/start_date")
-        let limit = plan?.dataLimit.flatMap { text -> String? in
-            // "0MB", "0GB" or an empty value mean that no limit is set.
-            let digits = text.filter(\.isNumber)
-            return plan?.setMonthData == 0 || digits.isEmpty || Int(digits) == 0 ? nil : text
-        }
-        return DataUsage(
-            sessionDownload: traffic.currentDownload ?? 0,
-            sessionUpload: traffic.currentUpload ?? 0,
-            sessionSeconds: traffic.currentConnectTime ?? 0,
-            monthDownload: month?.currentMonthDownload ?? 0,
-            monthUpload: month?.currentMonthUpload ?? 0,
-            monthSeconds: month?.monthDuration ?? 0,
-            monthLastReset: month?.monthLastClearTime ?? "",
-            totalDownload: traffic.totalDownload ?? 0,
-            totalUpload: traffic.totalUpload ?? 0,
-            totalSeconds: traffic.totalConnectTime ?? 0,
-            monthlyLimit: limit,
-            resetDay: plan?.startDay
-        )
-    }
-
-    func resetDataUsage() async throws {
-        try await expectOK(post("api/monitoring/clear-traffic", API.ClearTrafficRequest(clearTraffic: 1)))
+        let month: API.MonthStatistics = try await get("api/monitoring/month_statistics")
+        return DataUsage(monthDownload: month.currentMonthDownload ?? 0, monthUpload: month.currentMonthUpload ?? 0)
     }
 
     func deviceDetails() async throws -> DeviceDetails {

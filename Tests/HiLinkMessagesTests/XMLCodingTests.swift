@@ -187,8 +187,6 @@ struct XMLCodingTests {
                 == #"<?xml version="1.0" encoding="UTF-8"?><request><dataswitch>0</dataswitch></request>"#)
         #expect(try XMLCoding.encode(API.DeviceControlRequest(control: 1), root: "request")
                 == #"<?xml version="1.0" encoding="UTF-8"?><request><Control>1</Control></request>"#)
-        #expect(try XMLCoding.encode(API.ClearTrafficRequest(clearTraffic: 1), root: "request")
-                == #"<?xml version="1.0" encoding="UTF-8"?><request><ClearTraffic>1</ClearTraffic></request>"#)
     }
 
     @Test func connectionSettingsRoundTripChangesOnlyRoaming() throws {
@@ -204,14 +202,12 @@ struct XMLCodingTests {
             """)
     }
 
-    @Test func trafficStatisticsUseLargeCounters() throws {
-        let traffic = try decode(API.TrafficStatistics.self, """
-            <response><CurrentConnectTime>5400</CurrentConnectTime><CurrentUpload>6100000</CurrentUpload>\
-            <CurrentDownload>48300000</CurrentDownload><TotalUpload>2100000000</TotalUpload>\
-            <TotalDownload>19800000000</TotalDownload><TotalConnectTime>3900000</TotalConnectTime></response>
+    @Test func monthStatisticsUseLargeCounters() throws {
+        let month = try decode(API.MonthStatistics.self, """
+            <response><CurrentMonthDownload>19800000000</CurrentMonthDownload><CurrentMonthUpload>2100000000</CurrentMonthUpload>\\
+            <MonthDuration>3900000</MonthDuration><MonthLastClearTime>2026-11-1</MonthLastClearTime></response>
             """)
-        #expect(traffic.currentDownload == 48_300_000)
-        #expect(traffic.totalDownload == 19_800_000_000)
-        #expect(traffic.totalConnectTime == 3_900_000)
+        #expect(month.currentMonthDownload == 19_800_000_000)
+        #expect(month.currentMonthUpload == 2_100_000_000)
     }
 }
