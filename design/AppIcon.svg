@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5DF07B"/>
+      <stop offset="1" stop-color="#1DCB3D"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DDF8E2"/>
+    </linearGradient>
+    <linearGradient id="bars" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4BE36B"/>
+      <stop offset="1" stop-color="#1FC340"/>
+    </linearGradient>
+  </defs>
+  <!-- macOS icon grid: 824pt squircle centred on a 1024pt canvas -->
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
+  <!-- Oval speech bubble with a curled tail, in the style of the Messages icon -->
+  <g fill="url(#bubble)">
+    <ellipse cx="512" cy="486" rx="304" ry="244"/>
+    <path d="M262 600 C 270 660 264 706 240 740 C 296 742 338 722 372 692 Z"/>
+  </g>
+  <!-- Signal bars -->
+  <g fill="url(#bars)">
+    <rect x="343" y="522" width="62" height="70" rx="15"/>
+    <rect x="435" y="472" width="62" height="120" rx="15"/>
+    <rect x="527" y="417" width="62" height="175" rx="15"/>
+    <rect x="619" y="362" width="62" height="230" rx="15"/>
+  </g>
+</svg>

@@ -1,0 +1,19 @@
+title: HiLink Messages
+description: Send and receive text messages on your Mac through a Huawei HiLink LTE stick.
+remote_theme: just-the-docs/just-the-docs@v0.10.1
+plugins:
+  - jekyll-remote-theme
+
+url: https://kludw.github.io
+baseurl: /hilink-messages
+
+color_scheme: light
+logo: /assets/icon.png
+search_enabled: true
+heading_anchors: true
+
+aux_links:
+  GitHub: https://github.com/kludw/hilink-messages
+aux_links_new_tab: true
+
+footer_content: HiLink Messages is an independent project. It is not affiliated with Huawei or Apple.
