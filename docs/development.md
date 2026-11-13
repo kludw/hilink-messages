@@ -57,7 +57,7 @@ The first build downloads the generator and its dependencies and takes a minute 
 swift test
 ```
 
-They also run on GitHub for every push and pull request (`.github/workflows/tests.yml`).
+They also run on GitHub for every push and pull request. The workflow (`.github/workflows/ci.yml`) has two jobs: one runs the tests, the other builds the app bundle with `scripts/bundle.sh` and keeps it as a downloadable artifact for 14 days. That build is signed locally, not by a developer certificate, so macOS will warn when it is first opened.
 
 The tests decode real responses from an E3372h-320 (with identifiers replaced), check that requests are encoded exactly as the stick expects, and cover the SMS counter, verification-code detection and phone-number handling. They do not need a stick.
 

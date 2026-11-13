@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# The jobs only read the repository.
+permissions:
+  contents: read
+
+# A newer push to the same branch replaces a run that is still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    # The app targets macOS 26, so it needs that system and its Xcode.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Show toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Run tests
+        run: swift test
+
+  build:
+    name: Build app
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build the app bundle
+        run: scripts/bundle.sh
+
+      - name: Check the bundle
+        run: |
+          test -x "build/HiLink Messages.app/Contents/MacOS/HiLinkMessages"
+          test -f "build/HiLink Messages.app/Contents/Resources/AppIcon.icns"
+          plutil -lint "build/HiLink Messages.app/Contents/Info.plist"
+          codesign --verify --verbose "build/HiLink Messages.app"
+
+      # ditto keeps the bundle's structure and signature intact inside the zip.
+      - name: Zip the app
+        run: ditto -c -k --keepParent "build/HiLink Messages.app" "HiLink-Messages.zip"
+
+      - name: Upload the app
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: HiLink-Messages
+          path: HiLink-Messages.zip
+          if-no-files-found: error
+          retention-days: 14
