@@ -28,7 +28,9 @@ private struct GeneralSettings: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Open at login", isOn: Binding(get: { launchesAtLogin }, set: setLaunchAtLogin))
+                // A closure rather than the method itself: passing `setLaunchAtLogin` directly crashes
+                // the Swift 6.3 compiler (the one in Xcode 26).
+                Toggle("Open at login", isOn: Binding(get: { launchesAtLogin }, set: { setLaunchAtLogin($0) }))
                 if let loginError {
                     Text(loginError)
                         .font(.caption)
