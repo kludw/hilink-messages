@@ -294,12 +294,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/MonthStatistics"
 
+  /api/online-update/autoupdate-config:
+    get:
+      operationId: getAutoUpdateConfig
+      x-verified: false
+      tags: [device]
+      summary: Whether the stick installs firmware updates by itself.
+      responses:
+        "200":
+          description: The update settings, or an error.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/AutoUpdateConfig"
+    post:
+      operationId: setAutoUpdateConfig
+      x-verified: false
+      tags: [device]
+      summary: Replace the update settings. Send back every field that was read, changing only what should change.
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              $ref: "#/components/schemas/AutoUpdateConfig"
+      responses:
+        "200":
+          description: "`<response>OK</response>`, or an error."
+          content:
+            application/xml:
+              schema:
+                type: string
+                xml:
+                  name: response
+
   /api/device/control:
     post:
       operationId: controlDevice
       x-verified: false
       tags: [device]
-      summary: Restart the stick. It disappears from the computer for a short while.
+      summary: Restart the stick, or restore its factory settings. Either way it disappears from the computer for a short while.
       requestBody:
         required: true
         content:
@@ -651,13 +685,24 @@ components:
           type: string
           description: Date the month counters were last reset.
 
+    AutoUpdateConfig:
+      type: object
+      properties:
+        auto_update:
+          type: integer
+          description: 1 installs firmware updates automatically, 0 does not.
+        ui_download:
+          type: integer
+        auto_update_interval:
+          type: integer
+
     DeviceControlRequest:
       type: object
       required: [Control]
       properties:
         Control:
           type: integer
-          description: 1 restarts the stick.
+          description: 1 restarts the stick; 2 restores its factory settings.
 
     ApiError:
       type: object

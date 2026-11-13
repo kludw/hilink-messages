@@ -12,7 +12,7 @@ struct SettingsView: View {
             MobileDataTab()
                 .tabItem { Label("Mobile Data", systemImage: "arrow.up.arrow.down") }
             StickSettings()
-                .tabItem { Label("Stick", systemImage: "antenna.radiowaves.left.and.right") }
+                .tabItem { Label("Stick", systemImage: "mediastick") }
         }
         .frame(width: 520)
         .fixedSize(horizontal: false, vertical: true)
@@ -186,6 +186,7 @@ private func duration(_ seconds: Int64) -> String {
 private struct StickSettings: View {
     @Environment(MessageStore.self) private var store
     @State private var confirmsRestart = false
+    @State private var confirmsReset = false
 
     var body: some View {
         let modem = store.modem
@@ -200,11 +201,7 @@ private struct StickSettings: View {
                     LabeledContent("Your number", value: modem.phoneNumber ?? "Not set")
                 }
             } footer: {
-                if modem.isConnected {
-                    Text(modem.canEditNumber
-                         ? "This SIM does not report its own number. Set or change it with the buttons at the bottom of the sidebar."
-                         : "The number is reported by the SIM.")
-                } else {
+                if !modem.isConnected {
                     Text("Plug in the stick to see its details.")
                 }
             }
@@ -227,9 +224,13 @@ private struct StickSettings: View {
                 .textSelection(.enabled)
 
                 Section {
+                    if let automatic = store.deviceDetails?.updatesAutomatically {
+                        Toggle("Update firmware automatically", isOn: Binding(get: { automatic }, set: { enabled in
+                            Task { await store.setFirmwareAutoUpdate(enabled: enabled) }
+                        }))
+                    }
                     Button("Restart Stick…") { confirmsRestart = true }
-                } footer: {
-                    Text("Restarting takes about a minute. The app reconnects by itself.")
+                    Button("Reset Stick…", role: .destructive) { confirmsReset = true }
                 }
                 StickErrorRow()
             }
@@ -241,6 +242,13 @@ private struct StickSettings: View {
             }
         } message: {
             Text("Messages cannot be sent or received until it is back.")
+        }
+        .confirmationDialog("Reset the stick to its factory settings?", isPresented: $confirmsReset) {
+            Button("Reset Stick", role: .destructive) {
+                Task { await store.factoryResetStick() }
+            }
+        } message: {
+            Text("Everything set up on the stick goes back to how it left the factory, and messages stored on it may be deleted. This cannot be undone.")
         }
         .task(id: modem.isConnected) { await store.loadDeviceDetails() }
     }

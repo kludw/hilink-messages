@@ -57,6 +57,8 @@ struct DeviceDetails: Sendable, Equatable {
     var imei = ""
     var serialNumber = ""
     var uptimeSeconds: Int64?
+    /// Whether the stick updates its firmware by itself; nil if it does not say.
+    var updatesAutomatically: Bool?
 }
 
 struct SMSCounts: Sendable, Equatable {
@@ -295,15 +297,29 @@ struct ModemClient: Sendable {
 
     func deviceDetails() async throws -> DeviceDetails {
         let device: API.DeviceInformation = try await get("api/device/information")
+        // Not every firmware has the update settings; leave the switch out if this one does not.
+        let update: API.AutoUpdateConfig? = try? await get("api/online-update/autoupdate-config")
         return DeviceDetails(name: device.deviceName ?? "", firmware: device.softwareVersion ?? "",
                              hardware: device.hardwareVersion ?? "", webUI: device.webUIVersion ?? "",
                              imei: device.imei ?? "", serialNumber: device.serialNumber ?? "",
-                             uptimeSeconds: device.uptime)
+                             uptimeSeconds: device.uptime, updatesAutomatically: update?.autoUpdate.map { $0 == 1 })
+    }
+
+    /// Changes only the automatic-update flag: the other update settings are read and sent back unchanged.
+    func setFirmwareAutoUpdate(enabled: Bool) async throws {
+        var config: API.AutoUpdateConfig = try await get("api/online-update/autoupdate-config")
+        config.autoUpdate = enabled ? 1 : 0
+        try await expectOK(post("api/online-update/autoupdate-config", config))
     }
 
     /// Restarts the stick. It drops off the Mac for a while and is rediscovered afterwards.
     func restart() async throws {
         try await expectOK(post("api/device/control", API.DeviceControlRequest(control: 1)))
+    }
+
+    /// Restores the stick's factory settings. It restarts, and anything configured on it is lost.
+    func factoryReset() async throws {
+        try await expectOK(post("api/device/control", API.DeviceControlRequest(control: 2)))
     }
 
     private func expectOK(_ response: String) throws {

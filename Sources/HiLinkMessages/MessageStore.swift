@@ -296,14 +296,30 @@ final class MessageStore {
         await stickSetting { self.deviceDetails = try await $0.deviceDetails() } sample: {
             self.deviceDetails = DeviceDetails(name: "Sample stick", firmware: "0.0", hardware: "SAMPLE",
                                                webUI: "0.0", imei: "000000000000000",
-                                               serialNumber: "SAMPLE0000", uptimeSeconds: 8_392)
+                                               serialNumber: "SAMPLE0000", uptimeSeconds: 8_392,
+                                               updatesAutomatically: self.deviceDetails?.updatesAutomatically ?? false)
         }
+    }
+
+    func setFirmwareAutoUpdate(enabled: Bool) async {
+        await stickSetting {
+            try await $0.setFirmwareAutoUpdate(enabled: enabled)
+            self.deviceDetails = try await $0.deviceDetails()
+        } sample: { self.deviceDetails?.updatesAutomatically = enabled }
     }
 
     /// Restarts the stick; the app shows the connection screen until it is back.
     func restartStick() async {
         await stickSetting {
             try await $0.restart()
+            self.disconnect()
+        } sample: {}
+    }
+
+    /// Restores the stick's factory settings; the app shows the connection screen until it is back.
+    func factoryResetStick() async {
+        await stickSetting {
+            try await $0.factoryReset()
             self.disconnect()
         } sample: {}
     }

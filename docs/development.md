@@ -63,10 +63,10 @@ The tests decode real responses from an E3372h-320 (with identifiers replaced), 
 
 Some stick code was written without a stick connected and has not run against a real device:
 
-- The calls marked `x-verified: false` in `openapi.yaml`: the mobile data switch, connection (roaming) settings, month statistics, and restarting the device.
+- The calls marked `x-verified: false` in `openapi.yaml`: the mobile data switch, connection (roaming) settings, month statistics, the firmware auto-update setting, and restarting or factory-resetting the device.
 - The switch of `ModemClient` to generated types, which is covered by tests using recorded responses but has not been exercised on a stick since.
 
-To verify: read each unverified call from a real stick and compare the answer with its schema, then try each action that changes something (mobile data, roaming, restart). When a call is confirmed, remove its `x-verified: false` mark and replace the assumed XML in the tests with a real response.
+To verify: read each unverified call from a real stick and compare the answer with its schema, then try each action that changes something (mobile data, roaming, firmware auto-update, restart; factory reset only with the owner's say-so, since it wipes the stick). When a call is confirmed, remove its `x-verified: false` mark and replace the assumed XML in the tests with a real response.
 
 ## Launch flags
 

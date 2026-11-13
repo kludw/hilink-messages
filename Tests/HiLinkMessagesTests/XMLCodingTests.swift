@@ -187,6 +187,8 @@ struct XMLCodingTests {
                 == #"<?xml version="1.0" encoding="UTF-8"?><request><dataswitch>0</dataswitch></request>"#)
         #expect(try XMLCoding.encode(API.DeviceControlRequest(control: 1), root: "request")
                 == #"<?xml version="1.0" encoding="UTF-8"?><request><Control>1</Control></request>"#)
+        #expect(try XMLCoding.encode(API.DeviceControlRequest(control: 2), root: "request")
+                == #"<?xml version="1.0" encoding="UTF-8"?><request><Control>2</Control></request>"#)
     }
 
     @Test func connectionSettingsRoundTripChangesOnlyRoaming() throws {
@@ -209,5 +211,14 @@ struct XMLCodingTests {
             """)
         #expect(month.currentMonthDownload == 19_800_000_000)
         #expect(month.currentMonthUpload == 2_100_000_000)
+    }
+
+    @Test func autoUpdateConfigRoundTripChangesOnlyTheSwitch() throws {
+        var config = try decode(API.AutoUpdateConfig.self,
+                                "<response><auto_update>1</auto_update><ui_download>0</ui_download></response>")
+        #expect(config.autoUpdate == 1)
+        config.autoUpdate = 0
+        #expect(try XMLCoding.encode(config, root: "request")
+                == #"<?xml version="1.0" encoding="UTF-8"?><request><auto_update>0</auto_update><ui_download>0</ui_download></request>"#)
     }
 }

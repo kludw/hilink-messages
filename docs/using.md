@@ -80,10 +80,12 @@ Open Settings with **⌘,** or from the menu bar icon.
 | Mobile Data | Data roaming | Allows mobile data on other networks, for example abroad. |
 | Mobile Data | This month (read-only) | Data downloaded, uploaded and the total for the current month, as counted by the stick. |
 | Stick | (read-only) | Connection status, signal, messages stored, your number, model, firmware, hardware, IMEI, serial number and how long the stick has been running. |
+| Stick | Update firmware automatically | Lets the stick install firmware updates by itself. Shown only if the stick offers the setting. |
 | Stick | Restart Stick… | Restarts the stick. It takes about a minute and the app reconnects by itself. |
+| Stick | Reset Stick… | Restores the stick's factory settings after a confirmation. Messages stored on it may be deleted. This cannot be undone. |
 
 {: .note }
-The Mobile Data tab and the Restart button are new and have not yet been verified against a real stick. If one of them reports an error, the stick's firmware probably answers differently from what the app expects.
+The Mobile Data tab, the firmware update switch and the Restart and Reset buttons are new and have not yet been verified against a real stick. If one of them reports an error, the stick's firmware probably answers differently from what the app expects.
 
 ## When the app is blocked
 
