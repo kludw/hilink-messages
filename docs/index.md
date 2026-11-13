@@ -19,7 +19,7 @@ HiLink Messages is a native macOS app for sending and receiving text messages (S
 - **Verification codes.** Notifications for messages that contain a code get a Copy Code button.
 - **Menu bar.** Closing the window leaves the app running as a signal-strength icon in the menu bar.
 - **Connection screen.** If the stick is unplugged, has no SIM or has no signal, the app says so instead of showing a stale inbox.
-- **Storage.** The stick holds a limited number of messages; the app warns when it is more than 80% full.
+- **Storage.** The stick holds a limited number of messages; the app shows how full it is and warns above 80%.
 
 ## What you need
 

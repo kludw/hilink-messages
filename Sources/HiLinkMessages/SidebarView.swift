@@ -254,8 +254,7 @@ struct ModemStatusBar: View {
                 SignalBars(level: status.signalBars)
                 Text(status.summary)
                 Spacer(minLength: 8)
-                // Storage only matters once it is running out; the full count is in Settings.
-                if status.isStorageNearlyFull {
+                if status.storageCapacity > 0 {
                     StorageIndicator(status: status)
                         .fixedSize()
                 }

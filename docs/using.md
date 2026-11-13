@@ -52,17 +52,15 @@ Its menu shows the carrier and network type, the unread count, and **Open Messag
 
 ## The sidebar footer
 
-- **Top row:** signal bars, carrier and network type. When the stick's message storage is more than 80% full, a warning with the count (for example `412/500`) appears here.
+- **Top row:** signal bars, carrier and network type, and the number of messages stored on the stick out of its capacity (for example `42/500`).
 - **Bottom row:** your own number, with buttons to copy and edit it.
 
 ### Storage warning
 
 The stick can only hold a fixed number of messages (500 on the E3372h-320). Once it is full, new messages cannot arrive.
 
-- Above **80%** an orange warning triangle and the count appear in the sidebar footer.
+- Above **80%** an orange warning triangle appears next to the count.
 - At **100%** the triangle turns red.
-
-The current count is always shown in Settings, on the Stick tab.
 
 Delete old conversations to free space.
 
