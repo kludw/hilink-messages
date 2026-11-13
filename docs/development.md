@@ -59,6 +59,15 @@ swift test
 
 The tests decode real responses from an E3372h-320 (with identifiers replaced), check that requests are encoded exactly as the stick expects, and cover the SMS counter, verification-code detection and phone-number handling. They do not need a stick.
 
+## Checks still owed
+
+Some stick code was written without a stick connected and has not run against a real device:
+
+- The calls marked `x-verified: false` in `openapi.yaml`: the mobile data switch, connection (roaming) settings, traffic and month statistics, the data plan, clearing statistics, and restarting the device.
+- The switch of `ModemClient` to generated types, which is covered by tests using recorded responses but has not been exercised on a stick since.
+
+To verify: read each unverified call from a real stick and compare the answer with its schema, then try each action that changes something (mobile data, roaming, reset statistics, restart). When a call is confirmed, remove its `x-verified: false` mark and replace the assumed XML in the tests with a real response.
+
 ## Launch flags
 
 These are for development and testing. Pass them after `--args`, and quit the running app first, because flags are only read at launch.

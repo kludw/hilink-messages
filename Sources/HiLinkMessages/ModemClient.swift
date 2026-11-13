@@ -35,6 +35,42 @@ struct ModemInfo: Sendable {
     var firmware: String
 }
 
+/// Mobile data settings of the stick.
+struct MobileDataSettings: Sendable, Equatable {
+    var isEnabled: Bool
+    /// Nil if the stick does not report a roaming setting.
+    var allowsRoaming: Bool?
+}
+
+/// Data transferred through the stick, in bytes, and time connected, in seconds.
+struct DataUsage: Sendable, Equatable {
+    var sessionDownload: Int64 = 0
+    var sessionUpload: Int64 = 0
+    var sessionSeconds: Int64 = 0
+    var monthDownload: Int64 = 0
+    var monthUpload: Int64 = 0
+    var monthSeconds: Int64 = 0
+    var monthLastReset = ""
+    var totalDownload: Int64 = 0
+    var totalUpload: Int64 = 0
+    var totalSeconds: Int64 = 0
+    /// The monthly limit as the stick states it (e.g. "5GB"), or nil if none is set.
+    var monthlyLimit: String?
+    /// Day of the month on which the monthly figures reset.
+    var resetDay: Int?
+}
+
+/// Identity of the stick, for the Settings window.
+struct DeviceDetails: Sendable, Equatable {
+    var name = ""
+    var firmware = ""
+    var hardware = ""
+    var webUI = ""
+    var imei = ""
+    var serialNumber = ""
+    var uptimeSeconds: Int64?
+}
+
 struct SMSCounts: Sendable, Equatable {
     var unread: Int
     var inbox: Int
@@ -238,6 +274,77 @@ struct ModemClient: Sendable {
 
     func delete(index: Int) async throws {
         let _: String = try await post("api/sms/delete-sms", API.SmsIndexRequest(index: index))
+    }
+
+    // MARK: Mobile data, usage and device
+    //
+    // These calls are marked `x-verified: false` in openapi.yaml: they follow how HiLink sticks
+    // generally behave and still need checking against a real device.
+
+    func mobileData() async throws -> MobileDataSettings {
+        let dataSwitch: API.MobileDataSwitch = try await get("api/dialup/mobile-dataswitch")
+        // Roaming lives in a separate document; not every firmware serves it.
+        let connection: API.ConnectionSettings? = try? await get("api/dialup/connection")
+        return MobileDataSettings(isEnabled: dataSwitch.dataswitch == 1,
+                                  allowsRoaming: connection?.roamAutoConnectEnable.map { $0 == 1 })
+    }
+
+    func setMobileData(enabled: Bool) async throws {
+        try await expectOK(post("api/dialup/mobile-dataswitch", API.MobileDataSwitch(dataswitch: enabled ? 1 : 0)))
+    }
+
+    /// Changes only the roaming flag: the other connection settings are read and sent back unchanged.
+    func setRoaming(allowed: Bool) async throws {
+        var connection: API.ConnectionSettings = try await get("api/dialup/connection")
+        connection.roamAutoConnectEnable = allowed ? 1 : 0
+        try await expectOK(post("api/dialup/connection", connection))
+    }
+
+    func dataUsage() async throws -> DataUsage {
+        let traffic: API.TrafficStatistics = try await get("api/monitoring/traffic-statistics")
+        // The month counters and the data plan are extras; show what the stick has.
+        let month: API.MonthStatistics? = try? await get("api/monitoring/month_statistics")
+        let plan: API.DataPlan? = try? await get("api/monitoring/start_date")
+        let limit = plan?.dataLimit.flatMap { text -> String? in
+            // "0MB", "0GB" or an empty value mean that no limit is set.
+            let digits = text.filter(\.isNumber)
+            return plan?.setMonthData == 0 || digits.isEmpty || Int(digits) == 0 ? nil : text
+        }
+        return DataUsage(
+            sessionDownload: traffic.currentDownload ?? 0,
+            sessionUpload: traffic.currentUpload ?? 0,
+            sessionSeconds: traffic.currentConnectTime ?? 0,
+            monthDownload: month?.currentMonthDownload ?? 0,
+            monthUpload: month?.currentMonthUpload ?? 0,
+            monthSeconds: month?.monthDuration ?? 0,
+            monthLastReset: month?.monthLastClearTime ?? "",
+            totalDownload: traffic.totalDownload ?? 0,
+            totalUpload: traffic.totalUpload ?? 0,
+            totalSeconds: traffic.totalConnectTime ?? 0,
+            monthlyLimit: limit,
+            resetDay: plan?.startDay
+        )
+    }
+
+    func resetDataUsage() async throws {
+        try await expectOK(post("api/monitoring/clear-traffic", API.ClearTrafficRequest(clearTraffic: 1)))
+    }
+
+    func deviceDetails() async throws -> DeviceDetails {
+        let device: API.DeviceInformation = try await get("api/device/information")
+        return DeviceDetails(name: device.deviceName ?? "", firmware: device.softwareVersion ?? "",
+                             hardware: device.hardwareVersion ?? "", webUI: device.webUIVersion ?? "",
+                             imei: device.imei ?? "", serialNumber: device.serialNumber ?? "",
+                             uptimeSeconds: device.uptime)
+    }
+
+    /// Restarts the stick. It drops off the Mac for a while and is rediscovered afterwards.
+    func restart() async throws {
+        try await expectOK(post("api/device/control", API.DeviceControlRequest(control: 1)))
+    }
+
+    private func expectOK(_ response: String) throws {
+        guard response.uppercased() == "OK" else { throw ModemError.badResponse }
     }
 
     // MARK: Transport

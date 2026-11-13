@@ -176,4 +176,42 @@ struct XMLCodingTests {
         #expect(try XMLCoding.encode(API.SmsIndexRequest(index: 40001), root: "request")
                 == #"<?xml version="1.0" encoding="UTF-8"?><request><Index>40001</Index></request>"#)
     }
+
+    // MARK: Mobile data, usage and device
+    //
+    // These documents follow how HiLink sticks generally answer; they have not been captured
+    // from a real device yet. Replace them with real responses once the calls are verified.
+
+    @Test func encodesSettingsRequests() throws {
+        #expect(try XMLCoding.encode(API.MobileDataSwitch(dataswitch: 0), root: "request")
+                == #"<?xml version="1.0" encoding="UTF-8"?><request><dataswitch>0</dataswitch></request>"#)
+        #expect(try XMLCoding.encode(API.DeviceControlRequest(control: 1), root: "request")
+                == #"<?xml version="1.0" encoding="UTF-8"?><request><Control>1</Control></request>"#)
+        #expect(try XMLCoding.encode(API.ClearTrafficRequest(clearTraffic: 1), root: "request")
+                == #"<?xml version="1.0" encoding="UTF-8"?><request><ClearTraffic>1</ClearTraffic></request>"#)
+    }
+
+    @Test func connectionSettingsRoundTripChangesOnlyRoaming() throws {
+        var settings = try decode(API.ConnectionSettings.self, """
+            <response><RoamAutoConnectEnable>0</RoamAutoConnectEnable><MaxIdelTime>0</MaxIdelTime><ConnectMode>0</ConnectMode>\
+            <MTU>1500</MTU><auto_dial_switch>1</auto_dial_switch><pdp_always_on>0</pdp_always_on></response>
+            """)
+        #expect(settings.roamAutoConnectEnable == 0)
+        settings.roamAutoConnectEnable = 1
+        #expect(try XMLCoding.encode(settings, root: "request") == """
+            <?xml version="1.0" encoding="UTF-8"?><request><RoamAutoConnectEnable>1</RoamAutoConnectEnable><MaxIdelTime>0</MaxIdelTime>\
+            <ConnectMode>0</ConnectMode><MTU>1500</MTU><auto_dial_switch>1</auto_dial_switch><pdp_always_on>0</pdp_always_on></request>
+            """)
+    }
+
+    @Test func trafficStatisticsUseLargeCounters() throws {
+        let traffic = try decode(API.TrafficStatistics.self, """
+            <response><CurrentConnectTime>5400</CurrentConnectTime><CurrentUpload>6100000</CurrentUpload>\
+            <CurrentDownload>48300000</CurrentDownload><TotalUpload>2100000000</TotalUpload>\
+            <TotalDownload>19800000000</TotalDownload><TotalConnectTime>3900000</TotalConnectTime></response>
+            """)
+        #expect(traffic.currentDownload == 48_300_000)
+        #expect(traffic.totalDownload == 19_800_000_000)
+        #expect(traffic.totalConnectTime == 3_900_000)
+    }
 }

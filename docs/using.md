@@ -76,7 +76,15 @@ Open Settings with **⌘,** or from the menu bar icon.
 | Notifications | Play a sound when a message arrives | Turns the text tone on or off. |
 | Notifications | Sound | Which tone to play. Picking one plays it. |
 | Notifications | Show notifications | Turns the banners on or off. macOS must also allow them. |
-| Stick | (read-only) | Connection status, model, firmware, signal, messages stored and your number. |
+| Mobile Data | Mobile data | Switches the SIM's internet connection on or off. Text messages work either way. |
+| Mobile Data | Data roaming | Allows mobile data on other networks, for example abroad. |
+| Data Usage | (read-only) | Data used in the current connection, this month and since the last reset, with the monthly limit if one is set. |
+| Data Usage | Reset Statistics… | Sets the stick's usage counters back to zero. |
+| Stick | (read-only) | Connection status, signal, messages stored, your number, model, firmware, hardware, IMEI, serial number and how long the stick has been running. |
+| Stick | Restart Stick… | Restarts the stick. It takes about a minute and the app reconnects by itself. |
+
+{: .note }
+The Mobile Data and Data Usage tabs and the Restart button are new and have not yet been verified against a real stick. If one of them reports an error, the stick's firmware probably answers differently from what the app expects.
 
 ## When the app is blocked
 

@@ -137,6 +137,9 @@ final class MessageStore {
         noServicePolls = 0
         modem = .disconnected
         isComposingNew = false
+        mobileData = nil
+        dataUsage = nil
+        deviceDetails = nil
     }
 
     private func poll() async {
@@ -252,6 +255,88 @@ final class MessageStore {
         }
         // A thread deleted elsewhere (or emptied by a reload) cannot stay selected.
         selectedIDs.formIntersection(groups.keys)
+    }
+
+    // MARK: Stick settings (Settings window)
+
+    /// Loaded on demand when the Settings window shows them; nil until then or when disconnected.
+    private(set) var mobileData: MobileDataSettings?
+    private(set) var dataUsage: DataUsage?
+    private(set) var deviceDetails: DeviceDetails?
+    /// What went wrong with the last stick-settings action, for the Settings window to show.
+    private(set) var stickSettingsError: String?
+
+    func loadMobileData() async {
+        await stickSetting { self.mobileData = try await $0.mobileData() } sample: {
+            self.mobileData = self.mobileData ?? MobileDataSettings(isEnabled: true, allowsRoaming: false)
+        }
+    }
+
+    func setMobileData(enabled: Bool) async {
+        await stickSetting {
+            try await $0.setMobileData(enabled: enabled)
+            self.mobileData = try await $0.mobileData()
+        } sample: { self.mobileData?.isEnabled = enabled }
+    }
+
+    func setRoaming(allowed: Bool) async {
+        await stickSetting {
+            try await $0.setRoaming(allowed: allowed)
+            self.mobileData = try await $0.mobileData()
+        } sample: { self.mobileData?.allowsRoaming = allowed }
+    }
+
+    func loadDataUsage() async {
+        await stickSetting { self.dataUsage = try await $0.dataUsage() } sample: {
+            self.dataUsage = self.dataUsage ?? DataUsage(
+                sessionDownload: 48_300_000, sessionUpload: 6_100_000, sessionSeconds: 5_400,
+                monthDownload: 2_740_000_000, monthUpload: 310_000_000, monthSeconds: 262_000,
+                monthLastReset: "2026-11-01", totalDownload: 19_800_000_000, totalUpload: 2_100_000_000,
+                totalSeconds: 3_900_000, monthlyLimit: "30GB", resetDay: 1)
+        }
+    }
+
+    func resetDataUsage() async {
+        await stickSetting {
+            try await $0.resetDataUsage()
+            self.dataUsage = try await $0.dataUsage()
+        } sample: { self.dataUsage = DataUsage(monthlyLimit: self.dataUsage?.monthlyLimit, resetDay: self.dataUsage?.resetDay) }
+    }
+
+    func loadDeviceDetails() async {
+        await stickSetting { self.deviceDetails = try await $0.deviceDetails() } sample: {
+            self.deviceDetails = DeviceDetails(name: "Sample stick", firmware: "0.0", hardware: "SAMPLE",
+                                               webUI: "0.0", imei: "000000000000000",
+                                               serialNumber: "SAMPLE0000", uptimeSeconds: 8_392)
+        }
+    }
+
+    /// Restarts the stick; the app shows the connection screen until it is back.
+    func restartStick() async {
+        await stickSetting {
+            try await $0.restart()
+            self.disconnect()
+        } sample: {}
+    }
+
+    /// Runs one stick-settings action, recording a readable error if it fails.
+    private func stickSetting(_ action: (ModemClient) async throws -> Void, sample: () -> Void) async {
+        stickSettingsError = nil
+        if usesSampleData {
+            sample()
+            return
+        }
+        guard let client else {
+            stickSettingsError = "The stick is not connected."
+            return
+        }
+        do {
+            try await action(client)
+        } catch ModemError.api(let code) {
+            stickSettingsError = "The stick refused the request (error \(code)). This stick may not support that setting."
+        } catch {
+            stickSettingsError = "The stick did not answer as expected."
+        }
     }
 
     // MARK: Own number
