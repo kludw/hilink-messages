@@ -265,7 +265,7 @@ struct ComposerView: View {
                     .frame(width: 30, height: 30)
             }
             .buttonStyle(.plain)
-            .glassEffect(.regular.interactive(), in: .circle)
+            .glassEffect(.regular.interactive(true), in: .circle)
             .help("Emoji & Symbols")
         }
         .animation(.easeOut(duration: 0.15), value: trimmed.isEmpty)

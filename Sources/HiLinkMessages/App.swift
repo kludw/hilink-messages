@@ -135,7 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Needed when launched as a bare binary (swift run) rather than from the .app bundle.
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         // Start talking to the stick whether or not a window is showing.
         MessageStore.shared.startIfNeeded()
 

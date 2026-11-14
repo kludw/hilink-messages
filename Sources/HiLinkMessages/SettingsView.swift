@@ -5,15 +5,20 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         TabView {
-            GeneralSettings()
-                .tabItem { Label("General", systemImage: "gearshape") }
-            NotificationSettings()
-                .tabItem { Label("Notifications", systemImage: "bell.badge") }
-            MobileDataTab()
-                .tabItem { Label("Mobile Data", systemImage: "arrow.up.arrow.down") }
-            StickSettings()
-                .tabItem { Label("Stick", systemImage: "mediastick") }
+            Tab("General", systemImage: "gearshape") {
+                GeneralSettings()
+            }
+            Tab("Notifications", systemImage: "bell.badge") {
+                NotificationSettings()
+            }
+            Tab("Mobile Data", systemImage: "arrow.up.arrow.down") {
+                MobileDataTab()
+            }
+            Tab("Stick", systemImage: "mediastick") {
+                StickSettings()
+            }
         }
+        .scenePadding()
         .frame(width: 520)
         .fixedSize(horizontal: false, vertical: true)
     }
